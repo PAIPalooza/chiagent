@@ -1,9 +1,42 @@
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
+
 from app.main import app
-from app.db.session import Base, engine, get_db
-from app.models import AddressUpdate
+from app.db.session import Base, get_db
+from app.models import AddressUpdate, Base
+from app.models.address_update import AddressUpdate as AddressUpdateModel
+
+# Import all models to ensure they are registered with SQLAlchemy
+from app.models import *
+
+# Create test database
+SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
+
+engine = create_engine(
+    SQLALCHEMY_DATABASE_URL,
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
+)
+TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+# Create test database tables
+Base.metadata.create_all(bind=engine)
+
+def override_get_db():
+    try:
+        db = TestingSessionLocal()
+        yield db
+    finally:
+        db.close()
+
+app.dependency_overrides[get_db] = override_get_db
+
+# Create test client
+client = TestClient(app)
 
 # Create the test client
 client = TestClient(app)
@@ -22,24 +55,14 @@ TEST_SHIPPING_ADDRESS = {
     "phone": "+14155551234"
 }
 
-# Fixture to override the database dependency
-def override_get_db():
-    try:
-        db = SessionLocal()
-        yield db
-    finally:
-        db.close()
-
-app.dependency_overrides[get_db] = override_get_db
-
 # Fixture to set up and tear down the test database
 @pytest.fixture(scope="function")
 def test_db():
     # Create all tables
     Base.metadata.create_all(bind=engine)
     
-    # Yield the database session
-    db = SessionLocal()
+    # Create a new database session
+    db = TestingSessionLocal()
     try:
         yield db
     finally:
@@ -48,6 +71,8 @@ def test_db():
         Base.metadata.drop_all(bind=engine)
 
 def test_update_order_address_success(test_db: Session):
+    # Ensure all tables are created
+    Base.metadata.create_all(bind=engine)
     """Test successful address update request."""
     # Prepare test data
     request_data = {
@@ -78,6 +103,8 @@ def test_update_order_address_success(test_db: Session):
     assert db_record.billing_address is None
 
 def test_update_order_address_with_billing(test_db: Session):
+    # Ensure all tables are created
+    Base.metadata.create_all(bind=engine)
     """Test address update with billing address."""
     # Prepare test data with billing address
     billing_address = {
@@ -115,7 +142,9 @@ def test_update_order_address_with_billing(test_db: Session):
     assert db_record is not None
     assert db_record.billing_address == billing_address
 
-def test_update_order_address_missing_required_fields():
+def test_update_order_address_missing_required_fields(test_db: Session):
+    # Ensure all tables are created
+    Base.metadata.create_all(bind=engine)
     """Test address update with missing required fields."""
     # Missing shipping_address
     request_data = {

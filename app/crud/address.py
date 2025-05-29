@@ -1,35 +1,54 @@
 from sqlalchemy.orm import Session
-from typing import Dict, Any
+from typing import Any, Dict, List, Optional
 import uuid
 from datetime import datetime
 
 from app.models import AddressUpdate
+from app.schemas.address import AddressUpdateCreate
 
 def create_address_update(
     db: Session,
     order_id: str,
     platform: str,
-    shipping_address: Dict[str, Any],
-    billing_address: Dict[str, Any] = None
+    shipping_address: dict,
+    billing_address: dict = None,
+    status: str = "pending"
 ) -> AddressUpdate:
     """
-    Create a new address update request in the database.
+    Create a new address update record in the database.
+    
+    Args:
+        db: Database session
+        order_id: ID of the order to update
+        platform: Platform where the order was placed
+        shipping_address: New shipping address details
+        billing_address: New billing address details (optional)
+        status: Status of the address update (default: "pending")
+        
+    Returns:
+        AddressUpdate: The created address update record
     """
+    # Create the database model instance
     db_address_update = AddressUpdate(
-        id=uuid.uuid4(),
         order_id=order_id,
         platform=platform,
         shipping_address=shipping_address,
         billing_address=billing_address,
-        status="pending",
+        status=status,
         created_at=datetime.utcnow(),
         updated_at=datetime.utcnow()
     )
     
+    # Add to session and commit
     db.add(db_address_update)
-    db.commit()
-    db.refresh(db_address_update)
-    return db_address_update
+    try:
+        db.commit()
+        db.refresh(db_address_update)
+        return db_address_update
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error creating address update: {str(e)}")
+        raise
 
 def get_address_update(db: Session, address_update_id: str) -> AddressUpdate:
     """

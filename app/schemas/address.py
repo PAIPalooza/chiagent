@@ -40,6 +40,10 @@ class AddressUpdateResponse(BaseModel):
     """Schema for address update response."""
     status: str = Field(..., description="Status of the address update request", example="pending")
 
+class AddressUpdateCreate(AddressUpdateRequest):
+    """Schema for creating a new address update record."""
+    pass
+
 class AddressUpdateInDB(AddressUpdateRequest):
     """Schema for address update record in database."""
     id: UUID

@@ -1,5 +1,4 @@
 from sqlalchemy import Column, String, JSON, DateTime, text
-from sqlalchemy.dialects.postgresql import UUID
 import uuid
 from datetime import datetime
 
@@ -12,12 +11,12 @@ class AddressUpdate(Base):
     __tablename__ = "address_updates"
 
     id = Column(
-        UUID(as_uuid=True),
+        String(36),
         primary_key=True,
-        default=uuid.uuid4,
-        server_default=text("gen_random_uuid()"),
+        default=lambda: str(uuid.uuid4()),
         unique=True,
         nullable=False,
+        comment="UUID as string for SQLite compatibility"
     )
     order_id = Column(String, nullable=False, index=True, comment="The ID of the order being updated")
     platform = Column(String, nullable=False, comment="Platform where the order was placed")
