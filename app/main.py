@@ -7,7 +7,7 @@ from typing import Generator, AsyncGenerator
 
 # Import database and models first to ensure tables are created
 from app.db.session import engine, Base, SessionLocal, get_db
-from app.api.v1.endpoints import refunds
+from app.api.v1.endpoints import refunds, address
 
 # Import models to ensure they are registered with SQLAlchemy
 from app.models import *
@@ -70,6 +70,11 @@ app.include_router(
     refunds.router,
     prefix="/api/v1",
     tags=["refunds"],
+)
+app.include_router(
+    address.router,
+    prefix="/api/v1",
+    tags=["addresses"],
 )
 
 @app.get("/health", tags=["health"])
